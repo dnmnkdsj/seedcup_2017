@@ -27,11 +27,29 @@ def loadDataSet():
     #print(team_data_columns)
     for col_name in team_data_columns[4:]:
         raw_team_data[col_name]*=raw_team_data['出场次数']
-    
-
 
     print(raw_team_data.head())
 
+    handled_team_data=DataFrame(columns=team_data_columns)
+    #将每个队所有队员信息转化成队伍信息
+    for team_name in range(208): #共208队
+        team_info=raw_team_data[raw_team_data["队名"]==team_name]
+        handled_team_data=handled_team_data.append(
+            team_info.apply(lambda x:x.sum()),ignore_index=True)
+
+        #print(team_info.apply(lambda x:x.sum()))
+
+    for col_name in team_data_columns[4:]:
+        handled_team_data[col_name]/=handled_team_data['出场次数']
+
+    for col_name in team_data_columns[0:5]:
+        handled_team_data.drop(col_name,axis=1,inplace=True)
+
+    print(handled_team_data.head())
+
+
+
+    return raw_team_data.head()
 
 
 def loadMatchData():
@@ -72,7 +90,7 @@ def loadMatchData():
 
     #将处理后的数据插入raw_match_data中
     for col_name in cols_to_change:
-        raw_match_data.pop(col_name)
+        del raw_match_data[col_name]
 
     for frame in [dataframe_temp1,dataframe_temp2,dataframe_temp3]:
         for colname in list(frame.columns.values):

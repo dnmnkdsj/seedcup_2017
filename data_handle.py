@@ -1,11 +1,8 @@
 import pandas as pd
+from pandas import DataFrame
 import numpy as np
 import csv
 import os
-
-base_dir=os.path.abspath(os.path.dirname(__file__))
-match_data_URI=os.path.join(base_dir,'data/matchDataTrain.csv')
-team_data_URI=os.path.join(base_dir,'data/teamData.csv')
 
 '''
     loadMatchData()与loadTeamData()读取所有数据，并进行初步处理
@@ -14,8 +11,28 @@ team_data_URI=os.path.join(base_dir,'data/teamData.csv')
     PS:loadMatchData1()与loadTeamData1()仅使用了csv，感觉不方便处理
 '''
 
+base_dir=os.path.abspath(os.path.dirname(__file__))
+match_data_URI=os.path.join(base_dir,'data/matchDataTrain.csv')
+team_data_URI=os.path.join(base_dir,'data/teamData.csv')
+
+
+
+
+
 def loadDataSet():
-    pass
+    raw_team_data=loadTeamData()
+    raw_match_data=loadMatchData()
+
+    team_data_columns=list(raw_team_data.columns.values)
+    #print(team_data_columns)
+    for col_name in team_data_columns[4:]:
+        raw_team_data[col_name]*=raw_team_data['出场次数']
+    
+
+
+    print(raw_team_data.head())
+
+
 
 def loadMatchData():
     '''
@@ -25,7 +42,7 @@ def loadMatchData():
     '''
     raw_match_data=pd.read_csv(match_data_URI)
 
-    cols_to_change=["客场本场前战绩","主场本场前战绩","比分"]
+    cols_to_change=["客场本场前战绩","主场本场前战绩","比分（客场:主场）"]
 
     #提取胜场数和负场数
     dataframe_temp1=raw_match_data[cols_to_change[0]].\
@@ -77,6 +94,8 @@ def loadTeamData():
         str_to_float=raw_team_data[col_name].str.strip('%')\
                          .astype(float)/100
         raw_team_data[col_name]=str_to_float
+
+    raw_team_data.fillna(0,inplace=True)
 
     return raw_team_data
 

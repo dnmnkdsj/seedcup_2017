@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame,Series
 import numpy as np
 import csv
 import os
@@ -19,16 +19,31 @@ team_data_URI=os.path.join(base_dir,'data/teamData.csv')
 
 
 
-def loadDataSet():
+def loadDataSet(team_features=['投篮命中率','投篮命中次数',
+                               '投篮出手次数','篮板总数','助攻',
+                               '抢断','盖帽','失误','犯规','得分']):
+    '''
+    可定制所要特征(仅限于team表中的特征
+
+    :param team_features:
+    所需要的team表中的特征列表
+    :param match_features:
+    match表中的特征默认为主、客场胜负场数，如需要更改对返回只调用drop()
+    :return:
+    dataSet为DataFrame类型，存储特征，为主场队信息减去客场队信息（其他处理另行定制
+    labelSet为Series类型，存储胜负
+    '''
     raw_team_data=loadTeamData()
     raw_match_data=loadMatchData()
+    match_features = ['客场前胜场数', '客场前负场数',
+                      '主场前胜场数', '主场前负场数']
 
     team_data_columns=list(raw_team_data.columns.values)
     #print(team_data_columns)
     for col_name in team_data_columns[4:]:
         raw_team_data[col_name]*=raw_team_data['出场次数']
 
-    print(raw_team_data.head())
+    #print(raw_team_data.head())
 
     handled_team_data=DataFrame(columns=team_data_columns)
     #将每个队所有队员信息转化成队伍信息
@@ -42,14 +57,37 @@ def loadDataSet():
     for col_name in team_data_columns[4:]:
         handled_team_data[col_name]/=handled_team_data['出场次数']
 
-    for col_name in team_data_columns[0:5]:
-        handled_team_data.drop(col_name,axis=1,inplace=True)
-
-    print(handled_team_data.head())
-
+    for col_name in team_data_columns:
+        if col_name not in team_features:
+            handled_team_data.drop(col_name,axis=1,inplace=True)
 
 
-    return raw_team_data.head()
+    dataSet_rows=[]
+    labelSet=[]
+
+
+
+    for index,row in raw_match_data.iterrows():
+        team_data_temp=handled_team_data.loc[row['主场队名']]-\
+                       handled_team_data.loc[row['客场队名']]
+        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
+
+        dataSet_rows.append(list(team_data_temp)+list(match_data_temp))
+        labelSet.append(row['主场胜负'])
+
+        match_data_temp_list = list(match_data_temp)
+        match_data_temp_list[0],match_data_temp_list[2]=\
+            match_data_temp_list[2],match_data_temp_list[0]
+        match_data_temp_list[1], match_data_temp_list[3] = \
+            match_data_temp_list[3], match_data_temp_list[1]
+        dataSet_rows.append(list(-team_data_temp) + match_data_temp_list)
+        labelSet.append(row['客场胜负'])
+
+
+    dataSet=DataFrame(dataSet_rows,columns=team_features+match_features)
+
+    labelSet=Series(labelSet)
+    return dataSet,labelSet
 
 
 def loadMatchData():
@@ -94,7 +132,7 @@ def loadMatchData():
 
     for frame in [dataframe_temp1,dataframe_temp2,dataframe_temp3]:
         for colname in list(frame.columns.values):
-            raw_match_data[colname]=frame[colname]
+            raw_match_data[colname]=frame[colname].astype(int)
 
     return raw_match_data
 

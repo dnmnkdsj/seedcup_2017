@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame,Series
+from pandas import DataFrame
 import numpy as np
 import csv
 import os
@@ -30,73 +30,6 @@ def get_score(team):
     return team_score[team]
 
 
-<<<<<<< HEAD
-def loadDataSet(team_features=['投篮命中率','投篮命中次数',
-                               '投篮出手次数','篮板总数','助攻',
-                               '抢断','盖帽','失误','犯规','得分']):
-    '''
-    可定制所要特征(仅限于team表中的特征
-
-    :param team_features:
-    所需要的team表中的特征列表
-    :param match_features:
-    match表中的特征默认为主、客场胜负场数，如需要更改对返回只调用drop()
-    :return:
-    dataSet为DataFrame类型，存储特征，为主场队信息减去客场队信息（其他处理另行定制
-    labelSet为Series类型，存储胜负
-    '''
-    raw_team_data=loadTeamData()
-    raw_match_data=loadMatchData()
-    match_features = ['客场前胜场数', '客场前负场数',
-                      '主场前胜场数', '主场前负场数']
-
-    team_data_columns = list(raw_team_data.columns.values)
-    handled_team_data=compressTeamData(raw_team_data)
-
-    for col_name in team_data_columns:
-        if col_name not in team_features:
-            handled_team_data.drop(col_name,axis=1,inplace=True)
-
-    dataSet_rows=[]
-    labelSet=[]
-
-    for index,row in raw_match_data.iterrows():
-        team_data_temp=handled_team_data.loc[row['主场队名']]-\
-                       handled_team_data.loc[row['客场队名']]
-        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
-
-        dataSet_rows.append(list(team_data_temp)+list(match_data_temp))
-        labelSet.append(row['主场胜负'])
-
-        match_data_temp_list = list(match_data_temp)
-        match_data_temp_list[0],match_data_temp_list[2]=\
-            match_data_temp_list[2],match_data_temp_list[0]
-        match_data_temp_list[1], match_data_temp_list[3] = \
-            match_data_temp_list[3], match_data_temp_list[1]
-        dataSet_rows.append(list(-team_data_temp) + match_data_temp_list)
-        labelSet.append(row['客场胜负'])
-
-
-    dataSet=DataFrame(dataSet_rows,columns=team_features+match_features)
-
-    labelSet=Series(labelSet)
-    return dataSet,labelSet
-
-def compressTeamData(raw_team_data):
-    team_data_columns = list(raw_team_data.columns.values)
-    # print(team_data_columns)
-    for col_name in team_data_columns[4:]:
-        raw_team_data[col_name] *= raw_team_data['出场次数']
-
-    # print(raw_team_data.head())
-
-    handled_team_data = DataFrame(columns=team_data_columns)
-    # 将每个队所有队员信息转化成队伍信息
-    for team_name in range(208):  # 共208队
-        team_info = raw_team_data[raw_team_data["队名"] == team_name]
-        handled_team_data = handled_team_data.append(
-            team_info.apply(lambda x: x.sum()), ignore_index=True)
-=======
 def win_probability(team_a, team_b):
     score_diff = get_score(team_b) - get_score(team_a)
     exp = score_diff / 400
@@ -126,21 +59,8 @@ def get_team_feature(team, team_data):
         feature.append(value)
 
     return feature
->>>>>>> a1261778e237caa3226e96ed4ef51a592039dffb
 
-        # print(team_info.apply(lambda x:x.sum()))
 
-<<<<<<< HEAD
-    for col_name in team_data_columns[5:]:
-        handled_team_data[col_name] /= handled_team_data['上场时间']
-
-    for col_names in [['投篮命中率', '投篮命中次数', '投篮出手次数'],
-                      ['三分命中率', '三分命中次数', '三分出手次数'],
-                      ['罚球命中率', '罚球命中次数', '罚球出手次数']]:
-        handled_team_data[col_names[0]] = handled_team_data[col_names[1]] \
-                                          / handled_team_data[col_names[2]]
-    return handled_team_data
-=======
 def loadDataSet():
     team_data = loadTeamData()
     match_data = loadMatchData()
@@ -164,7 +84,6 @@ def loadDataSet():
     print("team_data")
     print(team_data)
     return team_data, feature_data, label
->>>>>>> a1261778e237caa3226e96ed4ef51a592039dffb
 
 
 def loadMatchData():
@@ -208,15 +127,11 @@ def loadMatchData():
 
     for frame in [dataframe_temp1, dataframe_temp2, dataframe_temp3]:
         for colname in list(frame.columns.values):
-<<<<<<< HEAD
-            raw_match_data[colname]=frame[colname].astype(int)
-=======
             raw_match_data[colname] = frame[colname]
 
     raw_match_data['主场胜负比'] = raw_match_data['主场前胜场数'].astype(int) / (raw_match_data['主场前负场数'].astype(int) + 1)
     raw_match_data['客场胜负比'] = raw_match_data['客场前负场数'].astype(int) / (raw_match_data['客场前负场数'].astype(int) + 1)
     raw_match_data.loc[:, ['主场胜负比', '客场胜负比']] = preprocessing.scale(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
->>>>>>> a1261778e237caa3226e96ed4ef51a592039dffb
 
     print(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
     raw_match_data.fillna(0, inplace=True)

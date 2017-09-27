@@ -3,6 +3,9 @@ from pandas import DataFrame
 import numpy as np
 import csv
 import os
+from sklearn import preprocessing
+from sklearn import svm
+from sklearn.linear_model import LogisticRegression as lr
 
 '''
     loadMatchData()与loadTeamData()读取所有数据，并进行初步处理
@@ -15,6 +18,7 @@ base_dir = os.path.abspath(os.path.dirname(__file__))
 match_data_URI = os.path.join(base_dir, 'data/matchDataTrain.csv')
 team_data_URI = os.path.join(base_dir, 'data/teamData.csv')
 test_data_URI = os.path.join(base_dir, 'data/matchDataTest.csv')
+output_URI = os.path.join(base_dir, 'data/predictPro.csv')
 
 base_score = 1600
 team_score = {}
@@ -45,14 +49,15 @@ def k_value(team):
 
 def update_score(win_team, lose_team):
     win_prob = win_probability(win_team, lose_team)
-    team_score[win_team] += k_value(win_team) * (1 - win_probability(win_team, lose_team))
-    team_score[lose_team] += k_value(lose_team) * (- win_probability(lose_team, win_team))
+    team_score[win_team] += round(k_value(win_team) * (1 - win_probability(win_team, lose_team)))
+    team_score[lose_team] += round(k_value(lose_team) * (- win_probability(lose_team, win_team)))
 
 
 def get_team_feature(team, team_data):
-    feature = [get_score(team) / 1000]
+    feature = [get_score(team) / 10000]
     for culumn, value in team_data.loc[team].iteritems():
         feature.append(value)
+
     return feature
 
 
@@ -65,8 +70,10 @@ def loadDataSet():
     for index, row in match_data.iterrows():
         away_team = row['客场队名']
         away_feature = get_team_feature(away_team, team_data)
+        away_feature.append(row['客场胜负比'])
         home_team = row['主场队名']
         home_feature = get_team_feature(home_team, team_data)
+        home_feature.append(row['主场胜负比'])
         home_will_win = row['主场胜负']
         feature_data.append(away_feature + home_feature)
         label.append(home_will_win)
@@ -74,7 +81,9 @@ def loadDataSet():
             update_score(home_team, away_team)
         else:
             update_score(away_team, home_team)
-    return feature_data, label
+    print("team_data")
+    print(team_data)
+    return team_data, feature_data, label
 
 
 def loadMatchData():
@@ -120,6 +129,12 @@ def loadMatchData():
         for colname in list(frame.columns.values):
             raw_match_data[colname] = frame[colname]
 
+    raw_match_data['主场胜负比'] = raw_match_data['主场前胜场数'].astype(int) / (raw_match_data['主场前负场数'].astype(int) + 1)
+    raw_match_data['客场胜负比'] = raw_match_data['客场前负场数'].astype(int) / (raw_match_data['客场前负场数'].astype(int) + 1)
+    raw_match_data.loc[:, ['主场胜负比', '客场胜负比']] = preprocessing.scale(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
+
+    print(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
+    raw_match_data.fillna(0, inplace=True)
     return raw_match_data
 
 
@@ -141,19 +156,16 @@ def loadTeamData():
 
     raw_team_data.fillna(0, inplace=True)
 
+    print("raw_team_data:")
+    print(np.sum(raw_team_data))
     return compressTeamData(raw_team_data)
 
 
 def compressTeamData(team_data):
-
-    print("处理队伍数据...")
+    print("压缩队伍数据...")
     team_data_columns = list(team_data.columns.values)
-    print(team_data_columns)
-    team_data['上场时间'] *= team_data['出场次数'] / 100
-    for col_name in team_data_columns[5:]:
-        team_data[col_name] /= team_data['上场时间']
-
-    print(team_data.head())
+    for col_name in team_data_columns[4:]:
+        team_data[col_name] *= team_data['出场次数']
 
     compressed_team_data = DataFrame(columns=team_data_columns)
     # 将每个队所有队员信息转化成队伍信息
@@ -166,14 +178,94 @@ def compressTeamData(team_data):
 
         # print(team_info.apply(lambda x:x.sum()))
 
-    print(compressed_team_data.head())
+    for col_name in team_data_columns[6:]:
+        compressed_team_data[col_name] /= (compressed_team_data['上场时间'] / 10)
+
+    compressed_team_data['投篮命中率'] = compressed_team_data['投篮命中次数'] / compressed_team_data['投篮出手次数']
+    compressed_team_data['三分命中率'] = compressed_team_data['三分命中次数'] / compressed_team_data['三分出手次数']
+    compressed_team_data['罚球命中率'] = compressed_team_data['罚球命中次数'] / compressed_team_data['罚球出手次数']
+
+    print("compressed_team_data:")
+    print(compressed_team_data)
+    compressed_team_data.fillna(0, inplace=True)
     for col_name in team_data_columns[1:5]:
         compressed_team_data.drop(col_name, axis=1, inplace=True)
 
     compressed_team_data.set_index('队名', drop=True, inplace=True)
+
+    preprocessing.scale(compressed_team_data, copy=False)
+
     return compressed_team_data
 
 
+def load_test_feature(team_data):
+    test_data = load_test_data()
+    feature_data = []
+
+    for index, row in test_data.iterrows():
+        away_team = row['客场队名']
+        away_feature = get_team_feature(away_team, team_data)
+        away_feature.append(row['客场胜负比'])
+        home_team = row['主场队名']
+        home_feature = get_team_feature(home_team, team_data)
+        home_feature.append(row['主场胜负比'])
+        feature_data.append(away_feature + home_feature)
+    return feature_data
+
+
+def load_test_data():
+    raw_match_data = pd.read_csv(test_data_URI)
+
+    print("加载测试数据...")
+
+    cols_to_change = ["客场本场前战绩", "主场本场前战绩"]
+
+    # 提取胜场数和负场数
+    dataframe_temp1 = raw_match_data[cols_to_change[0]]. \
+        str.extract('(\d+)胜(\d+)负', expand=True)
+    dataframe_temp1.rename(columns={0: "客场前胜场数", 1: "客场前负场数"},
+                           inplace=True)
+
+    dataframe_temp2 = raw_match_data[cols_to_change[1]]. \
+        str.extract('(\d+)胜(\d+)负', expand=True)
+    dataframe_temp2.rename(columns={0: "主场前胜场数", 1: "主场前负场数"},
+                           inplace=True)
+
+    # 将处理后的数据插入raw_match_data中
+    for col_name in cols_to_change:
+        del raw_match_data[col_name]
+
+    for frame in [dataframe_temp1, dataframe_temp2]:
+        for colname in list(frame.columns.values):
+            raw_match_data[colname] = frame[colname]
+
+    raw_match_data['主场胜负比'] = raw_match_data['主场前胜场数'].astype(int) / (raw_match_data['主场前负场数'].astype(int) + 1)
+    raw_match_data['客场胜负比'] = raw_match_data['客场前负场数'].astype(int) / (raw_match_data['客场前负场数'].astype(int) + 1)
+    raw_match_data.loc[:, ['主场胜负比', '客场胜负比']] = preprocessing.scale(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
+    return raw_match_data
+
+
+def write_pred_result(result):
+    with open(output_URI, 'w') as file:
+        writer = csv.writer(file)
+        writer.writerow(['主场赢得比赛的置信度'])
+        writer.writerows(result)
+
+
 if (__name__ == '__main__'):
-    feature_data, label = loadDataSet()
-    print("数据构建完成，开始训练")
+    team_data, feature_data, label = loadDataSet()
+    print("数据构建完成,开始训练")
+    test_feature = load_test_feature(team_data)
+
+    # classifier = svm.SVC(kernel='rbf', probability=True, gamma='auto')
+    # classifier.fit(feature_data, label)
+    # result = classifier.predict_proba(test_feature)
+
+
+    l = lr()
+    l.fit(feature_data, label)
+    result = l.predict_proba(test_feature)
+
+    single_result = [[x[0]] for x in result]
+
+    write_pred_result(single_result)

@@ -60,6 +60,12 @@ def get_team_feature(team, team_data):
 
     return feature
 
+def connect_data(match, team_data):
+    away_feature = get_team_feature(match['客场队名'], team_data)
+    away_feature.append(match['客场胜负比'])
+    home_feature = get_team_feature(match['主场队名'], team_data)
+    home_feature.append(match['主场胜负比'])
+    return away_feature + home_feature
 
 def loadDataSet():
     team_data = loadTeamData()
@@ -68,19 +74,13 @@ def loadDataSet():
     label = []
 
     for index, row in match_data.iterrows():
-        away_team = row['客场队名']
-        away_feature = get_team_feature(away_team, team_data)
-        away_feature.append(row['客场胜负比'])
-        home_team = row['主场队名']
-        home_feature = get_team_feature(home_team, team_data)
-        home_feature.append(row['主场胜负比'])
         home_will_win = row['主场胜负']
-        feature_data.append(away_feature + home_feature)
+        feature_data.append(connect_data(row, team_data))
         label.append(home_will_win)
         if home_will_win:
-            update_score(home_team, away_team)
+            update_score(row['主场队名'], row['客场队名'])
         else:
-            update_score(away_team, home_team)
+            update_score(row['客场队名'], row['主场队名'])
     print("team_data")
     print(team_data)
     return team_data, feature_data, label
@@ -203,13 +203,7 @@ def load_test_feature(team_data):
     feature_data = []
 
     for index, row in test_data.iterrows():
-        away_team = row['客场队名']
-        away_feature = get_team_feature(away_team, team_data)
-        away_feature.append(row['客场胜负比'])
-        home_team = row['主场队名']
-        home_feature = get_team_feature(home_team, team_data)
-        home_feature.append(row['主场胜负比'])
-        feature_data.append(away_feature + home_feature)
+        feature_data.append(connect_data(row, team_data))
     return feature_data
 
 

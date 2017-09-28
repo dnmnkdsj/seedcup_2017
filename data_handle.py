@@ -82,7 +82,7 @@ def loadDataSet():
         else:
             update_score(row['客场队名'], row['主场队名'])
     print("team_data")
-    print(team_data)
+    print(team_data.head())
     return team_data, feature_data, label
 
 
@@ -179,22 +179,23 @@ def compressTeamData(team_data):
         # print(team_info.apply(lambda x:x.sum()))
 
     for col_name in team_data_columns[6:]:
-        compressed_team_data[col_name] /= (compressed_team_data['上场时间'] / 10)
+        compressed_team_data[col_name] /= (compressed_team_data['上场时间'])
 
     compressed_team_data['投篮命中率'] = compressed_team_data['投篮命中次数'] / compressed_team_data['投篮出手次数']
     compressed_team_data['三分命中率'] = compressed_team_data['三分命中次数'] / compressed_team_data['三分出手次数']
     compressed_team_data['罚球命中率'] = compressed_team_data['罚球命中次数'] / compressed_team_data['罚球出手次数']
 
     print("compressed_team_data:")
-    print(compressed_team_data)
+    print(compressed_team_data.head())
     compressed_team_data.fillna(0, inplace=True)
-    for col_name in team_data_columns[1:5]:
+    for col_name in team_data_columns[0:5]:
         compressed_team_data.drop(col_name, axis=1, inplace=True)
 
-    compressed_team_data.set_index('队名', drop=True, inplace=True)
 
     preprocessing.scale(compressed_team_data, copy=False)
 
+    print("compressed_team_data1:")
+    print(compressed_team_data.head())
     return compressed_team_data
 
 

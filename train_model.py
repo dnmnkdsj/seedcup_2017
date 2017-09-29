@@ -40,7 +40,7 @@ if __name__=='__main__':
 
 
 
-    x_train,x_test,y_train,y_test=train_test_split(dataSet,labelSet,test_size=0.3)
+    x_train,x_test,y_train,y_test=train_test_split(dataSet,labelSet,test_size=0.2)
 
     sc = StandardScaler()
     sc.fit(x_train)
@@ -60,14 +60,14 @@ if __name__=='__main__':
     clf.fit(x_train, y_train)
     print('Best roc_auc: {:.4}, with best C: {}'.format(clf.best_score_, clf.best_params_['C']))
     #l.fit(x_train,y_train)
-    result = clf.predict_proba(x_train)
+    result = clf.predict_proba(x_test)
 
     print(result[:10])
     print(y_test[:10])
     single_result = [[x[1]] for x in result]
     re=[x[1] for x in result]
 
-    print(roc_auc_score(np.array(y_train),np.array(re)))
+    print(roc_auc_score(np.array(y_test),np.array(re)))
     #plotRUC(re,y_test)
     #write_pred_result(single_result)
     print('--------------------')

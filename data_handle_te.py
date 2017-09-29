@@ -45,7 +45,7 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     handled_team_data.fillna(0)
 
     match_features = ['客场前胜场数', '客场前负场数',
-                      '主场前胜场数', '主场前负场数']
+                      '主场前胜场数', '主场前负场数','主对客历史胜率']
 
     for col_name in team_data_columns:
         if col_name not in team_features:
@@ -57,7 +57,7 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     for index,row in raw_match_data.iterrows():
         team_data_temp=handled_team_data.loc[row['主场队名']]
         #               -handled_team_data.loc[row['客场队名']]
-        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
+        match_data_temp=row.loc['客场前胜场数':'主对客历史胜率']
 
         dataSet_rows.append(list(team_data_temp)
                             +list(handled_team_data.loc[row['客场队名']])

@@ -192,7 +192,7 @@ def compressTeamData(team_data):
         compressed_team_data.drop(col_name, axis=1, inplace=True)
 
 
-    preprocessing.scale(compressed_team_data, copy=False)
+    #preprocessing.scale(compressed_team_data, copy=False)
 
     print("compressed_team_data1:")
     print(compressed_team_data.head())

@@ -57,7 +57,7 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     for index,row in raw_match_data.iterrows():
         team_data_temp=handled_team_data.loc[row['主场队名']]
         #               -handled_team_data.loc[row['客场队名']]
-        match_data_temp=row.loc['客场前胜场数':'主对客历史胜率']
+        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
 
         dataSet_rows.append(list(team_data_temp)
                             +list(handled_team_data.loc[row['客场队名']])
@@ -77,12 +77,30 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     #preprocessing.scale(dataSet, copy=False)
 
     labelSet=Series(labelSet)
+    testSet=[]
+    '''
+    raw_test_data=loadTestData(raw_match_data)
+    print(raw_match_data.head())
+    print(raw_test_data.head())
+    testSet_rows=[]
+    for index,row in raw_test_data.iterrows():
+        team_data_temp=handled_team_data.loc[row['主场队名']]
+        #               -handled_team_data.loc[row['客场队名']]
+        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
+
+        testSet_rows.append(list(team_data_temp)
+                            +list(handled_team_data.loc[row['客场队名']])
+                            +list(match_data_temp))
+
+    testSet=DataFrame(testSet_rows)
+    '''
+
     print('the dataSet and labelSet are:')
     print(dataSet.head())
     print(labelSet.head())
     print(list(dataSet.columns.values))
 
-    return dataSet,labelSet
+    return dataSet,labelSet,testSet
 
 
 
@@ -169,7 +187,6 @@ def loadMatchData():
     rates_of_z=[]
     rates_of_k=[]
 
-    # 剔除部分数据
     print(raw_match_data.head(30))
     print(raw_match_data['主场胜负'].value_counts())
 
@@ -184,7 +201,7 @@ def loadMatchData():
             rates_of_k.append(1)
         else:
             rates_of_k.append(int(data_temp['客场胜负'].value_counts()[1]) / len(data_temp))
-    
+    '''
     for z_name in range(208):
         data_temp = raw_match_data[raw_match_data['主场队名']==z_name]
         if data_temp.empty:
@@ -201,7 +218,7 @@ def loadMatchData():
 
 
     raw_match_data['主对客历史胜率']=Series(rates_z_to_k)
-
+    '''
     print(raw_match_data.head())
     return raw_match_data,rates_of_z,rates_of_k
 
@@ -224,7 +241,7 @@ def loadTeamData():
 
     return raw_team_data
 
-def loadTestData():
+def loadTestData(match_data):
     raw_test_data=pd.read_csv(test_data_URI)
 
     cols_to_change = ["客场本场前战绩", "主场本场前战绩"]
@@ -247,7 +264,19 @@ def loadTestData():
     for frame in [dataframe_temp1, dataframe_temp2]:
         for colname in list(frame.columns.values):
             raw_test_data[colname] = frame[colname].astype(int)
+    '''
+    rates_z_to_k = []
+    for index,row in raw_test_data.iterrows():
+        try:
+            match_row=match_data[row['主场队名']==match_data['主场队名'] and \
+                             row['客场队名'] == match_data['客场队名']]
+            rates_z_to_k.append(match_row.loc[0]['主对客历史胜率'])
+        except:
+            rates_z_to_k.append(0)
 
+
+    raw_test_data['主对客历史胜率']=Series(rates_z_to_k)
+    '''
     return raw_test_data
 
 def write_pred_result(result):

@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn import cross_validation, metrics
+#from sklearn import cross_validation, metrics
 from sklearn.model_selection import GridSearchCV
 
 
@@ -31,7 +31,7 @@ if __name__=='__main__':
                      '投篮出手次数', '三分命中率','三分命中次数','三分出手次数',
                      '罚球命中率','罚球命中次数','罚球出手次数','篮板总数','前场篮板','后场篮板', '助攻',
                      '抢断', '盖帽', '失误', '犯规', '得分','作主场胜率','作客场胜率']
-    dataSet,labelSet = loadDataSet(team_features)
+    dataSet,labelSet,testSet = loadDataSet(team_features)
     #dataSet=MinMaxScaler().fit_transform(dataSet)
     #dataSet=VarianceThreshold(threshold=0.01).fit_transform(dataSet)
 
@@ -41,6 +41,13 @@ if __name__=='__main__':
 
 
     x_train,x_test,y_train,y_test=train_test_split(dataSet,labelSet,test_size=0.2)
+
+    #x_train=dataSet
+    #y_train=labelSet
+    #x_test=testSet
+
+    #print(x_train)
+    #print(x_test)
 
     sc = StandardScaler()
     sc.fit(x_train)
@@ -66,10 +73,12 @@ if __name__=='__main__':
     print(y_test[:10])
     single_result = [[x[1]] for x in result]
     re=[x[1] for x in result]
+    #print(testSet[44].value_counts())
 
     print(roc_auc_score(np.array(y_test),np.array(re)))
     #plotRUC(re,y_test)
     #write_pred_result(single_result)
+    '''
     print('--------------------')
 
     gbm0 = GradientBoostingClassifier(random_state=10)
@@ -95,3 +104,4 @@ if __name__=='__main__':
     gsearch2.fit(x_test, y_test)
     gsearch2.grid_scores_, gsearch2.best_params_, gsearch2.best_score_
 
+    '''

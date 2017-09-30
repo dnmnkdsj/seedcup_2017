@@ -54,7 +54,7 @@ def update_score(win_team, lose_team):
 
 
 def get_team_feature(team, team_data):
-    feature = [get_score(team) / 10000]
+    feature = [get_score(team) ]
     for culumn, value in team_data.loc[team].iteritems():
         feature.append(value)
 

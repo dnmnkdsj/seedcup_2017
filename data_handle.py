@@ -235,7 +235,7 @@ def load_test_data():
             raw_match_data[colname] = frame[colname]
 
     raw_match_data['主场胜负比'] = raw_match_data['主场前胜场数'].astype(int) / (raw_match_data['主场前负场数'].astype(int) + 1)
-    raw_match_data['客场胜负比'] = raw_match_data['客场前负场数'].astype(int) / (raw_match_data['客场前负场数'].astype(int) + 1)
+    raw_match_data['客场胜负比'] = raw_match_data['客场前胜场数'].astype(int) / (raw_match_data['客场前负场数'].astype(int) + 1)
     raw_match_data.loc[:, ['主场胜负比', '客场胜负比']] = preprocessing.scale(raw_match_data.loc[:, ['主场胜负比', '客场胜负比']])
     return raw_match_data
 

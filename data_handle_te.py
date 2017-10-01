@@ -20,6 +20,7 @@ output_URI = os.path.join(base_dir, 'data/predictPro.csv')
 
 base_score = 1600
 team_score = {}
+global_var={}
 
 
 
@@ -38,10 +39,18 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     labelSet为Series类型，存储胜负
     '''
     raw_team_data=loadTeamData()
-    raw_match_data,z,k=loadMatchData()
+    raw_match_data,z,k,n=loadMatchData()
     handled_team_data=compressTeamData(raw_team_data)
     handled_team_data['作主场胜率']=Series(z)
     handled_team_data['作客场胜率']=Series(k)
+    handled_team_data['比赛场数']=Series(n)
+    '''
+    for col_name in [ '投篮命中次数',
+                     '投篮出手次数', '三分命中次数','三分出手次数',
+                     '罚球命中次数','罚球出手次数','篮板总数','前场篮板','后场篮板', '助攻',
+                     '抢断', '盖帽', '失误', '犯规', '得分']:
+        handled_team_data[col_name] /= (handled_team_data['比赛场数'])
+    '''
     handled_team_data.fillna(0)
 
     match_features = ['客场前胜场数', '客场前负场数',
@@ -57,10 +66,22 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
             update_score(row['主场队名'], row['客场队名'])
         else:
             update_score(row['客场队名'], row['主场队名'])
+
     score=[0 for i in range(208)]
     for index,value in team_score.items():
         score[index]=value
+
     handled_team_data['等级分']=Series(score)
+
+    rank_dict = {}
+    score.sort(reverse=True)
+    k = 1
+    for i in score:
+        rank_dict[i] = k
+        k += 1
+    seed = [rank_dict[row['等级分']] for index, row in handled_team_data.iterrows()]
+    handled_team_data['seed'] = Series(seed)
+    print(handled_team_data.loc[0])
 
     team_data_columns = list(handled_team_data.columns.values)
     print(team_data_columns)
@@ -70,101 +91,143 @@ def loadDataSet(team_features=['投篮命中率','投篮命中次数',
     print(handled_team_data.head())
 
 
+
+
+
     for index,row in raw_match_data.iterrows():
         team_data_temp_z=handled_team_data.loc[row['主场队名']].copy()
         team_data_temp_k = handled_team_data.loc[row['客场队名']].copy()
         #               -handled_team_data.loc[row['客场队名']]
         #team_data_temp1=handled_team_data.loc[row['主场队名']]\
         #               -handled_team_data.loc[row['客场队名']]
-        team_data_temp_z.drop('作客场胜率',inplace=True)
-        team_data_temp_k.drop('作主场胜率',inplace=True)
+        try:
+            team_data_temp_z.drop('作客场胜率',inplace=True)
+            team_data_temp_k.drop('作主场胜率',inplace=True)
+        except:
+            pass
+        try:
+            team_data_temp_z['等级分']+=100
+        except:
+            pass
 
-        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
+        match_data_temp=row.loc['主场前胜场数':'主场前负场数']
         win_prob=win_probability(row['主场队名'],row['客场队名'])
 
         features=[]
         features.append(win_prob)
-        #features.extend(list(match_data_temp))
+        if '前胜率' in team_features:
+            if row['客场前负场数']+row['客场前胜场数']!=0:
+                features.append(row['客场前胜场数']/(row['客场前负场数']+row['客场前胜场数']))
+            else:
+                features.append(0.5)
+            if row['主场前负场数']+row['主场前胜场数']:
+                features.append(row['主场前胜场数']/(row['主场前负场数'] + row['主场前胜场数']))
+            else:
+                features.append(0.5)
+        features.extend(list(match_data_temp))
         #features.extend(list(team_data_temp_z/team_data_temp_k))
         features.extend(list(team_data_temp_z)+list(team_data_temp_k))
         dataSet_rows.append(features)
         labelSet.append(row['主场胜负'])
-
-        '''
-        match_data_temp_list = list(match_data_temp)
-        match_data_temp_list[0],match_data_temp_list[2]=\
-            match_data_temp_list[2],match_data_temp_list[0]
-        match_data_temp_list[1], match_data_temp_list[3] = \
-            match_data_temp_list[3], match_data_temp_list[1]
-        dataSet_rows.append(list(-team_data_temp))
-        labelSet.append(row['客场胜负'])
-        '''
 
     dataSet=DataFrame(dataSet_rows)
     #preprocessing.scale(dataSet, copy=False)
 
     labelSet=Series(labelSet)
     testSet=[]
-    '''
+
     raw_test_data=loadTestData(raw_match_data)
     print(raw_match_data.head())
     print(raw_test_data.head())
     testSet_rows=[]
     for index,row in raw_test_data.iterrows():
-        team_data_temp=handled_team_data.loc[row['主场队名']]
+        team_data_temp_z = handled_team_data.loc[row['主场队名']].copy()
+        team_data_temp_k = handled_team_data.loc[row['客场队名']].copy()
         #               -handled_team_data.loc[row['客场队名']]
-        match_data_temp=row.loc['客场前胜场数':'主场前负场数']
+        # team_data_temp1=handled_team_data.loc[row['主场队名']]\
+        #               -handled_team_data.loc[row['客场队名']]
+        try:
+            team_data_temp_z.drop('作客场胜率', inplace=True)
+            team_data_temp_k.drop('作主场胜率', inplace=True)
+        except:
+            pass
+        try:
+            team_data_temp_z['等级分'] += 100
+        except:
+            pass
+
+        match_data_temp = row.loc['主场前胜场数':'主场前负场数']
         win_prob = win_probability(row['主场队名'], row['客场队名'])
-        other_features = []
-        other_features.append(win_prob)
-        other_features.extend(list(match_data_temp))
-        testSet_rows.append(list(team_data_temp)
-                            +list(handled_team_data.loc[row['客场队名']])
-                            +other_features)
+
+        features = []
+        features.append(win_prob)
+        if '前胜率' in team_features:
+            if row['客场前负场数'] + row['客场前胜场数'] != 0:
+                features.append(row['客场前胜场数'] / (row['客场前负场数'] + row['客场前胜场数']))
+            else:
+                features.append(0.5)
+            if row['主场前负场数'] + row['主场前胜场数']:
+                features.append(row['主场前胜场数'] / (row['主场前负场数'] + row['主场前胜场数']))
+            else:
+                features.append(0.5)
+        features.extend(list(match_data_temp))
+        # features.extend(list(team_data_temp_z/team_data_temp_k))
+        features.extend(list(team_data_temp_z) + list(team_data_temp_k))
+        testSet_rows.append(features)
+
 
     testSet=DataFrame(testSet_rows)
-'''
 
     print('the dataSet and labelSet are:')
     print(dataSet.head())
     print(labelSet.head())
     print(list(dataSet.columns.values))
 
+    dataSet.fillna(0)
+
     return dataSet,labelSet,testSet
-
-
-
-
 
 def compressTeamData(raw_team_data):
     team_data_columns = list(raw_team_data.columns.values)
     # print(team_data_columns)
-    raw_team_data=raw_team_data[raw_team_data['上场时间']*raw_team_data['出场次数']>81]
+
+    #raw_team_data=raw_team_data[raw_team_data['上场时间']*raw_team_data['出场次数']>81]
 
     for col_name in team_data_columns[4:]:
         raw_team_data[col_name] *= raw_team_data['出场次数']
 
     # print(raw_team_data.head())
+    
+
 
     handled_team_data = DataFrame(columns=team_data_columns)
     # 将每个队所有队员信息转化成队伍信息
     for team_name in range(208):  # 共208队
         team_info = raw_team_data.loc[raw_team_data["队名"] == team_name ]
+
         handled_team_data = handled_team_data.append(
             team_info.apply(lambda x: x.sum()), ignore_index=True)
+        handled_team_data['人数']=len(team_info)
         get_score(team_name)
 
         # print(team_info.apply(lambda x:x.sum()))
 
     for col_name in team_data_columns[6:]:
-        handled_team_data[col_name] /= (handled_team_data['上场时间'])
-    handled_team_data['上场时间']/=handled_team_data['出场次数']
-
+        handled_team_data[col_name] /= 82
+    handled_team_data['百回合得分']=handled_team_data['得分']/handled_team_data['回合数']*100
+    handled_team_data['百回合失误']=handled_team_data['失误']/handled_team_data['回合数']*100
+    handled_team_data['DWS']=1/handled_team_data['百回合得分']
     handled_team_data['投篮命中率'] = handled_team_data['投篮命中次数'] / handled_team_data['投篮出手次数']
     handled_team_data['三分命中率'] = handled_team_data['三分命中次数'] / handled_team_data['三分出手次数']
     handled_team_data['罚球命中率'] = handled_team_data['罚球命中次数'] / handled_team_data['罚球出手次数']
-    handled_team_data['攻防比']=handled_team_data['投篮出手次数']/(handled_team_data['抢断']+handled_team_data['盖帽'])
-    handled_team_data['失误比']=handled_team_data['助攻']/handled_team_data['失误']
+    handled_team_data['人均进攻篮板比例']=handled_team_data['前场篮板']/handled_team_data['篮板总数']/handled_team_data['人数']
+    handled_team_data['人均防守篮板比例'] = handled_team_data['后场篮板'] / handled_team_data['篮板总数']/handled_team_data['人数']
+    handled_team_data['罚球比例'] = handled_team_data['罚球出手次数'] / handled_team_data['投篮出手次数']
+    handled_team_data['三分比例'] = handled_team_data['三分出手次数'] / handled_team_data['投篮出手次数']
+
+    match_data=pd.read_csv(match_data_URI)
+
+
     print('compressing data:')
     print(handled_team_data.head(10))
 
@@ -220,41 +283,27 @@ def loadMatchData():
     rates_z_to_k=[]
     rates_of_z=[]
     rates_of_k=[]
+    num_of_match=[]
 
     print(raw_match_data.head(30))
     print(raw_match_data['主场胜负'].value_counts())
 
     for name in range(208):
         data_temp = raw_match_data[raw_match_data['主场队名'] == name]
+        num_of_match.append(len(data_temp))
         if data_temp.empty:
             rates_of_z.append(0)
         else:
             rates_of_z.append(int(data_temp['主场胜负'].value_counts()[1]) / len(data_temp))
         data_temp = raw_match_data[raw_match_data['客场队名'] == name]
+        num_of_match[name]+=len(data_temp)
         if data_temp.empty:
             rates_of_k.append(1)
         else:
             rates_of_k.append(int(data_temp['客场胜负'].value_counts()[1]) / len(data_temp))
-    '''
-    for z_name in range(208):
-        data_temp = raw_match_data[raw_match_data['主场队名']==z_name]
-        if data_temp.empty:
-            continue
-        for k_name in list(data_temp['客场队名']):
-            data_temp_t=data_temp[data_temp['客场队名']==k_name]
-            #print(data_temp_t['主场胜负'].value_counts()[1])
-            rate=0
-            try:
-                data_temp_t['主场胜负'].value_counts()[1]/len(data_temp_t)
-            except:
-                pass
-            rates_z_to_k.append(rate)
 
-
-    raw_match_data['主对客历史胜率']=Series(rates_z_to_k)
-    '''
     print(raw_match_data.head())
-    return raw_match_data,rates_of_z,rates_of_k
+    return raw_match_data,rates_of_z,rates_of_k,num_of_match
 
 def loadTeamData():
     '''
@@ -272,6 +321,9 @@ def loadTeamData():
         raw_team_data[col_name]=str_to_float
 
     raw_team_data.fillna(0,inplace=True)
+
+    raw_team_data['回合数']=raw_team_data['投篮出手次数']+0.4*raw_team_data['罚球出手次数']\
+                           -raw_team_data['前场篮板']+raw_team_data['失误']
 
     return raw_team_data
 
@@ -298,19 +350,7 @@ def loadTestData(match_data):
     for frame in [dataframe_temp1, dataframe_temp2]:
         for colname in list(frame.columns.values):
             raw_test_data[colname] = frame[colname].astype(int)
-    '''
-    rates_z_to_k = []
-    for index,row in raw_test_data.iterrows():
-        try:
-            match_row=match_data[row['主场队名']==match_data['主场队名'] and \
-                             row['客场队名'] == match_data['客场队名']]
-            rates_z_to_k.append(match_row.loc[0]['主对客历史胜率'])
-        except:
-            rates_z_to_k.append(0)
 
-
-    raw_test_data['主对客历史胜率']=Series(rates_z_to_k)
-    '''
     return raw_test_data
 
 def get_score(team):
